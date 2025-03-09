@@ -3,6 +3,9 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  ConnectedSocket,
+  MessageBody,
+  SubscribeMessage,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
@@ -39,7 +42,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // Handle incoming messages
-  handleMessage(client: Socket, payload: any) {
+  @SubscribeMessage('message')
+  handleMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: any,
+  ) {
     const username = this.users[client.id];
     this.server.emit('message', {
       message: payload.message,
