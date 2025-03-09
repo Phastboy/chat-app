@@ -1,9 +1,6 @@
 import {
   WebSocketGateway,
   WebSocketServer,
-  SubscribeMessage,
-  MessageBody,
-  ConnectedSocket,
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
@@ -18,18 +15,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  private users: { [socketId: string]: string } = {}; // Store connected users
+  private users: { [socketId: string]: string } = {};
 
   // Handle new client connections
   handleConnection(client: Socket) {
-    const username = `User${client.id.slice(0, 4)}`; // Generate a simple username
+    const username = `User${client.id.slice(0, 4)}`;
     this.users[client.id] = username;
 
     // Notify all clients about the new user
-    this.server.emit('userConnected', { userId: client.id, username });
+    client.broadcast.emit('user-connected', { username });
 
     // Send the list of connected users to the new client
-    client.emit('userList', Object.values(this.users));
+    client.emit('user-list', Object.values(this.users));
   }
 
   // Handle client disconnections
@@ -38,16 +35,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     delete this.users[client.id];
 
     // Notify all clients about the disconnected user
-    this.server.emit('userDisconnected', { userId: client.id, username });
+    client.broadcast.emit('user-disconnected', { username });
   }
 
-  @SubscribeMessage('message')
-  handleMessage(
-    @MessageBody() data: string,
-    @ConnectedSocket() client: Socket,
-  ): void {
+  // Handle incoming messages
+  handleMessage(client: Socket, payload: any) {
     const username = this.users[client.id];
-    // Broadcast the message to all connected clients
-    this.server.emit('message', { message: data, userId: client.id, username });
+    this.server.emit('message', {
+      message: payload.message,
+      username,
+    });
   }
 }
