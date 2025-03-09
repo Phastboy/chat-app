@@ -9,6 +9,7 @@ async function bootstrap() {
       colors: true,
     }),
   });
+  app.enableCors();
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

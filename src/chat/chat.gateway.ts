@@ -1,40 +1,49 @@
-import { Logger } from '@nestjs/common';
 import {
-  ConnectedSocket,
-  MessageBody,
-  OnGatewayConnection,
-  OnGatewayDisconnect,
-  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
 } from '@nestjs/websockets';
-import { log } from 'console';
-import { Socket, Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 
-@WebSocketGateway()
+@WebSocketGateway({ cors: true }) // Enable CORS for WebSocket connections
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  private logger = new Logger(ChatGateway.name);
+  private users: { [socketId: string]: string } = {}; // Store connected users
 
-  handleConnection(client: any, ...args: any[]) {
-    this.logger.log('new user connected');
+  // Handle new client connections
+  handleConnection(client: Socket) {
+    const username = `User${client.id.slice(0, 4)}`; // Generate a simple username
+    this.users[client.id] = username;
+
+    // Notify all clients about the new user
+    this.server.emit('userConnected', { userId: client.id, username });
+
+    // Send the list of connected users to the new client
+    client.emit('userList', Object.values(this.users));
   }
-  handleDisconnect(client: any) {
-    this.logger.log('user left');
+
+  // Handle client disconnections
+  handleDisconnect(client: Socket) {
+    const username = this.users[client.id];
+    delete this.users[client.id];
+
+    // Notify all clients about the disconnected user
+    this.server.emit('userDisconnected', { userId: client.id, username });
   }
 
   @SubscribeMessage('message')
   handleMessage(
+    @MessageBody() data: string,
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: any,
-  ) {
-    const clientID = client.id;
-    const message = 'yo! fans';
-    log(payload);
-    this.logger.log(`message received from: ${clientID}`);
-    client.emit('response', 'i dey with you');
-    this.server.emit('message', { message, userId: clientID });
+  ): void {
+    const username = this.users[client.id];
+    // Broadcast the message to all connected clients
+    this.server.emit('message', { message: data, userId: client.id, username });
   }
 }
