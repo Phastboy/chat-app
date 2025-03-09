@@ -6,18 +6,19 @@ import {
   WebSocketGateway,
 } from '@nestjs/websockets';
 import { log } from 'console';
+import { Socket } from 'socket.io';
 
 @WebSocketGateway()
 export class ChatGateway {
   private logger = new Logger(ChatGateway.name);
   @SubscribeMessage('message')
   handleMessage(
-    @ConnectedSocket() client: any,
+    @ConnectedSocket() client: Socket,
     @MessageBody() payload: any,
-  ): string {
+  ) {
     const clientID = client.id;
     log(payload);
     this.logger.log(`message received from: ${clientID}`);
-    return 'Hello world!';
+    client.emit('response', 'i dey with you');
   }
 }
