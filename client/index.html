@@ -1,58 +1,266 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat App</title>
-</head>
-<body>
-  <h1>Simple Chat App</h1>
-  <div id="chat">
-    <ul id="messages"></ul>
-  </div>
-  <input id="messageInput" placeholder="Type a message..." />
-  <button onclick="sendMessage()">Send</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat App</title>
+    <style>
+      /* General Styles */
+      body {
+        font-family: 'Arial', sans-serif;
+        background-color: #f4f4f9;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
 
-  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-  <script>
-    const socket = io('http://localhost:3000');
+      .container {
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        width: 400px;
+        max-width: 100%;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
 
-    // Handle incoming messages
-    socket.on('message', (data) => {
-      const messages = document.getElementById('messages');
-      const li = document.createElement('li');
-      li.textContent = `${data.username}: ${data.message}`;
-      messages.appendChild(li);
-    });
+      h1 {
+        background-color: #6200ea;
+        color: white;
+        margin: 0;
+        padding: 20px;
+        text-align: center;
+        font-size: 24px;
+      }
 
-    // Handle new user connections
-    socket.on('userConnected', (data) => {
-      const messages = document.getElementById('messages');
-      const li = document.createElement('li');
-      li.textContent = `${data.username} has joined the chat.`;
-      messages.appendChild(li);
-    });
+      /* Chat Messages */
+      #messages {
+        list-style-type: none;
+        margin: 0;
+        padding: 20px;
+        flex-grow: 1;
+        overflow-y: auto;
+        max-height: 300px;
+        border-bottom: 1px solid #ddd;
+      }
 
-    // Handle user disconnections
-    socket.on('userDisconnected', (data) => {
-      const messages = document.getElementById('messages');
-      const li = document.createElement('li');
-      li.textContent = `${data.username} has left the chat.`;
-      messages.appendChild(li);
-    });
+      #messages li {
+        margin-bottom: 15px;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #f1f1f1;
+        position: relative;
+        animation: fadeIn 0.3s ease-in-out;
+      }
 
-    // Handle the list of connected users
-    socket.on('userList', (users) => {
-      console.log('Connected users:', users);
-    });
+      #messages li::before {
+        content: '';
+        position: absolute;
+        top: 10px;
+        left: -10px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: transparent #f1f1f1 transparent transparent;
+      }
 
-    // Send a message to the server
-    function sendMessage() {
-      const input = document.getElementById('messageInput');
-      const message = input.value;
-      socket.emit('message', message);
-      input.value = '';
-    }
-  </script>
-</body>
+      #messages li strong {
+        color: #6200ea;
+      }
+
+      /* Input Area */
+      .input-area {
+        display: flex;
+        padding: 10px;
+        background-color: #f9f9f9;
+        border-top: 1px solid #ddd;
+      }
+
+      #messageInput {
+        flex-grow: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        margin-right: 10px;
+        font-size: 14px;
+      }
+
+      #messageInput:disabled {
+        background-color: #eee;
+      }
+
+      button {
+        padding: 10px 20px;
+        background-color: #6200ea;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+
+      /* Status Bar */
+      #status {
+        padding: 10px;
+        text-align: center;
+        font-size: 14px;
+        color: #666;
+        background-color: #f9f9f9;
+        border-top: 1px solid #ddd;
+      }
+
+      #status.connecting {
+        color: #ff9800;
+      }
+
+      #status.connected {
+        color: #4caf50;
+      }
+
+      #status.disconnected {
+        color: #f44336;
+      }
+
+      /* Animations */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Responsive Design */
+      @media (max-width: 480px) {
+        .container {
+          width: 100%;
+          height: 100vh;
+          border-radius: 0;
+        }
+
+        h1 {
+          font-size: 20px;
+        }
+
+        #messages {
+          max-height: 60vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Simple Chat App</h1>
+      <ul id="messages"></ul>
+      <div class="input-area">
+        <input type="text" id="messageInput" placeholder="Type a message" disabled />
+        <button onclick="sendMessage()" disabled>Send</button>
+      </div>
+      <div id="status">Connecting to the chat server...</div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+      const socket = io('http://localhost:3000');
+
+      const statusElement = document.getElementById('status');
+      const messageInput = document.getElementById('messageInput');
+      const sendButton = document.querySelector('button');
+
+      // Handle connection states
+      socket.on('connect', () => {
+        updateStatus('Connected to the chat server.', 'connected');
+        messageInput.disabled = false;
+        sendButton.disabled = false;
+      });
+
+      socket.on('disconnect', () => {
+        updateStatus('Disconnected from the chat server.', 'disconnected');
+        messageInput.disabled = true;
+        sendButton.disabled = true;
+      });
+
+      socket.on('connecting', () => {
+        updateStatus('Connecting to the chat server...', 'connecting');
+      });
+
+      socket.on('reconnect', (attempt) => {
+        updateStatus(`Reconnected to the chat server after ${attempt} attempts.`, 'connected');
+      });
+
+      socket.on('reconnect_attempt', (attempt) => {
+        updateStatus(`Attempting to reconnect (${attempt})...`, 'connecting');
+      });
+
+      socket.on('reconnect_error', (error) => {
+        updateStatus(`Reconnection error: ${error.message}`, 'disconnected');
+      });
+
+      socket.on('reconnect_failed', () => {
+        updateStatus('Failed to reconnect to the chat server.', 'disconnected');
+      });
+
+      socket.on('connect_error', (error) => {
+        updateStatus(`Connection error: ${error.message}`, 'disconnected');
+      });
+
+      // Handle incoming messages
+      socket.on('message', (data) => {
+        const messages = document.getElementById('messages');
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${data.username}:</strong> ${data.message}`;
+        messages.appendChild(li);
+        messages.scrollTop = messages.scrollHeight; // Auto-scroll to the latest message
+      });
+
+      // Handle user connection events
+      socket.on('user-connected', (data) => {
+        const messages = document.getElementById('messages');
+        const li = document.createElement('li');
+        li.textContent = `${data.username} joined the chat.`;
+        li.style.color = '#4caf50';
+        li.style.fontStyle = 'italic';
+        messages.appendChild(li);
+        messages.scrollTop = messages.scrollHeight;
+      });
+
+      socket.on('user-disconnected', (data) => {
+        const messages = document.getElementById('messages');
+        const li = document.createElement('li');
+        li.textContent = `${data.username} left the chat.`;
+        li.style.color = '#f44336';
+        li.style.fontStyle = 'italic';
+        messages.appendChild(li);
+        messages.scrollTop = messages.scrollHeight;
+      });
+
+      // Send a message to the server
+      function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value;
+        if (message) {
+          socket.emit('message', message);
+          input.value = '';
+        }
+      }
+
+      // Update the status message and apply a class for styling
+      function updateStatus(message, statusClass) {
+        const status = document.getElementById('status');
+        status.textContent = message;
+        status.className = statusClass;
+      }
+    </script>
+  </body>
 </html>
