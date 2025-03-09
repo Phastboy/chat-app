@@ -23,7 +23,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.users[client.id] = username;
 
     // Notify all clients about the new user
-    this.server.emit('user-connected', { username });
+    client.broadcast.emit('user-connected', { username });
 
     // Send the list of connected users to the new client
     client.emit('user-list', Object.values(this.users));
@@ -35,7 +35,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     delete this.users[client.id];
 
     // Notify all clients about the disconnected user
-    this.server.emit('user-disconnected', { username });
+    client.broadcast.emit('user-disconnected', { username });
   }
 
   // Handle incoming messages
