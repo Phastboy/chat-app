@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat App</title>
+</head>
+<body>
+  <h1>Simple Chat App</h1>
+  <div id="chat">
+    <ul id="messages"></ul>
+  </div>
+  <input id="messageInput" placeholder="Type a message..." />
+  <button onclick="sendMessage()">Send</button>
+
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script>
+    const socket = io('http://localhost:3000');
+
+    // Handle incoming messages
+    socket.on('message', (data) => {
+      const messages = document.getElementById('messages');
+      const li = document.createElement('li');
+      li.textContent = `${data.username}: ${data.message}`;
+      messages.appendChild(li);
+    });
+
+    // Handle new user connections
+    socket.on('userConnected', (data) => {
+      const messages = document.getElementById('messages');
+      const li = document.createElement('li');
+      li.textContent = `${data.username} has joined the chat.`;
+      messages.appendChild(li);
+    });
+
+    // Handle user disconnections
+    socket.on('userDisconnected', (data) => {
+      const messages = document.getElementById('messages');
+      const li = document.createElement('li');
+      li.textContent = `${data.username} has left the chat.`;
+      messages.appendChild(li);
+    });
+
+    // Handle the list of connected users
+    socket.on('userList', (users) => {
+      console.log('Connected users:', users);
+    });
+
+    // Send a message to the server
+    function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const message = input.value;
+      socket.emit('message', message);
+      input.value = '';
+    }
+  </script>
+</body>
+</html>
